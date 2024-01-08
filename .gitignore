@@ -4,11 +4,12 @@
 # Log file
 *.log
 
-# BlueJ files
-*.ctxt
+# Idea Intellij
+.idea/
+out/
+QRCodeMaker.iml
 
-# Mobile Tools for Java (J2ME)
-.mtj.tmp/
+src/META-INF/MANIFEST.MF
 
 # Package Files #
 *.jar

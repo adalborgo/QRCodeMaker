@@ -69,11 +69,10 @@ public class QRCodeGUI implements ActionListener, Languages {
 
     JFrame frame;
 
-    private int language = 0;
+    private int language = 0; // Default
 
     public QRCodeGUI() {
         // Get language
-        if (lang.equals("en")) language = 0;
         if (lang.equals("it")) language = 1;
 
         // Local url
