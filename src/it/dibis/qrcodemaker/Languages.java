@@ -3,7 +3,7 @@ package it.dibis.qrcodemaker;
 public interface Languages {
 
     // Revision control id
-    public static String cvsId = "$Id: Languages.java,v 0.1 03/01/2023 23:59:59 adalborgo $";
+    public static String cvsId = "$Id: Languages.java,v 0.1 10/01/2023 23:59:59 adalborgo $";
 
     public final String[][] MODE_MSG = {
             {"Type the text to encode",
@@ -33,7 +33,6 @@ public interface Languages {
     public final String[] STRING_MODE = {"Text", "Testo"};
     public final String[] TEXT_FILE = {"Text file", "File di testo"};
     public final String[] ARCH_FILE = {"Arch file", "File di archivio"};
-    ///public final String[] HEADER_FILE = {"Header file", "File con intestazione"};
 
     // Data Panel Labels
     public final String[] DATA_LABEL = {"Data File", "File dati"};
@@ -47,5 +46,5 @@ public interface Languages {
     public final String[] ERR_FILE2 = {"' not exist!", "' non esiste!"};
     public final String[] ERR_WRITE = {"Write error!", "Errore di scrittura!"};
     public final String[] ERR_IO = {"IO error!", "Errore di IO"};
-    public final String[] ERR_TEXT_LEN = {"Text too long!", "Testo troppo lungo!"};
+    public final String[] ERR_TEXT_LEN = {"Text too long (max 4296).", "Testo troppo lungo (max 4296)."};
 }

@@ -1,26 +1,21 @@
 package it.dibis.qrcodemaker;
 
 import java.awt.*;
+import java.awt.event.ActionEvent;
+import java.awt.event.ActionListener;
 import javax.swing.*;
 import javax.swing.border.*;
 import javax.swing.filechooser.FileNameExtensionFilter;
 import javax.swing.filechooser.FileSystemView;
-import java.awt.event.ActionEvent;
-import java.awt.event.ActionListener;
 import java.io.File;
 import java.io.IOException;
-import java.io.InputStream;
 import java.net.*;
-import java.awt.Desktop;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.StandardCopyOption;
 import java.util.Locale;
 
 public class QRCodeGUI implements ActionListener, Languages {
 
     // Revision control id
-    public static String cvsId = "$Id: QRCodeGUI.java,v 0.1 06/01/2023 23:59:59 adalborgo $";
+    public static String cvsId = "$Id: QRCodeGUI.java,v 0.1 10/01/2023 23:59:59 adalborgo $";
 
     public static boolean DEBUG = false;
 
@@ -29,9 +24,7 @@ public class QRCodeGUI implements ActionListener, Languages {
     private final int STRING_INX = 2;
 
     private final String FOLDER = "folder.png";
-    private final String INFOH = "info.html";
     private URL FOLDER_URL = null;
-    private URL INFO_URL = null;
 
     private final String JPG = "jpg";
     private final String PNG = "png";
@@ -47,6 +40,7 @@ public class QRCodeGUI implements ActionListener, Languages {
     private final Color LABEL_COLOR = Color.decode("#006080"); // Blue Lagoon
     private final Color MSG_COLOR = Color.DARK_GRAY; //.decode("#800000"); // Maroon
     private final Color ERR_COLOR = Color.decode("#F00000"); // Helvetia Red Color
+    private final Color OK_COLOR = Color.decode("#4B8F10"); // 52900B
 
     private JPanel dataFilePanel, folderPanel, textPanel, headerPanel, outputPathPanel;
     private JTextField dataFileText, outputPathText, folderText, headerText, imgTypeText, imgSizeText;
@@ -63,7 +57,10 @@ public class QRCodeGUI implements ActionListener, Languages {
 
     // Locale
     private final Locale locale = Locale.getDefault();
-    final String lang = locale.getLanguage();
+    final String langId = locale.getLanguage();
+
+    // Info
+    private final String INFO_FILE = "info-"; // "info-" + langId +".html";
 
     QRCodeMake qrcode = new QRCodeMake();
 
@@ -72,22 +69,46 @@ public class QRCodeGUI implements ActionListener, Languages {
     private int language = 0; // Default
 
     public QRCodeGUI() {
-        // Get language
-        if (lang.equals("it")) language = 1;
-
-        // Local url
         FOLDER_URL = getUrlPath(FOLDER);
-        INFO_URL = getUrlPath(INFOH);
 
-        // Set GUI
+        // Get language
+        if (langId.equals("it")) language = 1;
+
         makeGUI();
+    }
+
+    /**
+     * Get absoluteUrl
+     *
+     * @param str
+     * @param addSlash (only for folder)
+     * @return
+     */
+    URL getAbsoluteUrl(String str, boolean addSlash) {
+        URL url;
+        String absolutePath = new File(str).getAbsolutePath();
+        if (addSlash) absolutePath += "/";
+        try {
+            url = new URL("file:/" + absolutePath);
+        } catch (MalformedURLException e) {
+            throw new RuntimeException(e);
+        }
+
+        return url;
+    }
+
+    String getAbsolutePath(String str, boolean addSlash) {
+        String absolutePath = new File(str).getAbsolutePath();
+        if (addSlash) absolutePath += "/";
+
+        return absolutePath;
     }
 
     /**
      * Make GUI
      */
     private void makeGUI() {
-      // Select: Windows Look and Feel
+        // Select: Windows Look and Feel
         try {
             UIManager.setLookAndFeel(UIManager.getSystemLookAndFeelClassName());
         } catch (Exception e) {
@@ -397,8 +418,7 @@ public class QRCodeGUI implements ActionListener, Languages {
             System.exit(0); // End
         } else if (source == infoButton) {
             if (DEBUG) System.out.println("infoButton");
-            String info = "info.html";
-            showInfo(info);
+            showInfo();
         }
 
         // Browse buttons
@@ -490,15 +510,15 @@ public class QRCodeGUI implements ActionListener, Languages {
         if (DEBUG) System.out.println("cmd: " + cmd);
 
         if (error == 0) {
-            setMessage(OK[language], Color.GREEN);
+            setMessage(OK[language], OK_COLOR);
         } else if (error == qrcode.ERR_FILE_NOT_FOUND) {
             setMessage(ERR_FILE1 + dataFile + ERR_FILE2, Color.RED);
         } else if (error == qrcode.ERR_WRITE_FILE) {
-            setMessage(ERR_WRITE[language], Color.RED);
+            setMessage(ERR_WRITE[language], ERR_COLOR);
         } else if (error == qrcode.ERR_IO) {
-            setMessage(ERR_IO[language], Color.RED);
+            setMessage(ERR_IO[language], ERR_COLOR);
         } else {
-            setMessage(" Error!", Color.RED);
+            setMessage(" Error!", ERR_COLOR);
         }
     }
 
@@ -512,7 +532,6 @@ public class QRCodeGUI implements ActionListener, Languages {
     }
 
     //------ UtilGUI ------//
-
     /**
      * @param labelText
      * @param textField
@@ -604,36 +623,17 @@ public class QRCodeGUI implements ActionListener, Languages {
         message.setForeground(color);
     }
 
-    void showInfo(String src) {
+    void showInfo() {
+        String infoPath = new File("info/").getAbsolutePath();
         try {
-            URI uri;
-            String urlStr = INFO_URL.toString();
-            int pnt = urlStr.indexOf("jar:");
-            if (pnt >= 0) { // jar:file:
-                uri = fileCopy(src);
-            } else {
-                uri = INFO_URL.toURI();
+            URL infoUrl = new URL("file:/" + infoPath + "/" + INFO_FILE + langId + ".html");
+            URI uri = infoUrl.toURI();
+            if (uri != null) {
+                    Desktop.getDesktop().browse(uri);
             }
-            if (uri != null) Desktop.getDesktop().browse(uri);
         } catch (IOException | URISyntaxException e) {
             throw new RuntimeException(e);
         }
-    }
-
-    URI fileCopy(String src) {
-        URI uri;
-        try {
-            Path pathOut = new File(src).toPath();
-            if (Files.notExists(pathOut)) {
-                // Copy content
-                InputStream input = INFO_URL.openStream();
-                Files.copy(input, pathOut, StandardCopyOption.REPLACE_EXISTING);
-            }
-            uri = pathOut.toUri();
-        } catch (IOException e) {
-            throw new RuntimeException(e);
-        }
-        return uri;
     }
 
     URL getUrlPath(String src) {
