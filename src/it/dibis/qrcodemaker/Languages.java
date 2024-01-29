@@ -1,9 +1,16 @@
 package it.dibis.qrcodemaker;
 
+/**
+ * @package: QRCodeMaker
+ * @file Languages.java
+ * @version 1.0 (23-01-2024)
+ * @description: this file contains text strings in two languages: English and Italian
+ * @author Antonio Dal Borgo <adalborgo@gmail.com>
+ */
 public interface Languages {
 
     // Revision control id
-    public static String cvsId = "$Id: Languages.java,v 0.1 10/01/2023 23:59:59 adalborgo $";
+    public static String cvsId = "$Id: Languages.java,v 1.0 23/01/2023 23:59:59 adalborgo $";
 
     public final String[][] MODE_MSG = {
             {"Type the text to encode",
@@ -16,7 +23,12 @@ public interface Languages {
             "Codifiche multiple: caricare il file con i testi per ciascun QRCode"}
     };
 
-    public final String WINDOW_NAME = " QRCode maker ";
+    public final String APP_NAME = " QRCode maker ";
+    public final String APP_VERSION = "1.0";
+
+    public final String WINDOW_NAME = APP_NAME + "(" + APP_VERSION +")";
+
+    public final String[] OK = {"OK", "OK"};
 
     // Panel Title labels
     public final String[] DATA_FILE = {"Data", "Dati"};
@@ -25,7 +37,7 @@ public interface Languages {
 
     // Button texts
     public final String[] CLEAR = {"Clear", "Cancella"};
-    public final String[] OK = {"Ok", "Ok"};
+    public final String[] RUN = {"Run", "Esegui"};
     public final String[] EXIT = {"Exit", "Esci"};
     public final String[] INFO = {"Info", "Info"};
 
@@ -38,7 +50,7 @@ public interface Languages {
     public final String[] DATA_LABEL = {"Data File", "File dati"};
     public final String[] FOLDER_LABEL = {"Folder", "Cartella"};
     public final String[] HEADER_LABEL = {"Header", "Intestazione"};
-    public final String[] OUTPUT_LABEL = {"Output PathName", "File immagine"};
+    public final String[] OUTPUT_LABEL = {"QRCode PathName", "File QRCode"};
     public final String[] SIZE_LABEL = {"Size (pixel)", "Dimensione (pixel)"};
 
     // Errors
@@ -47,4 +59,5 @@ public interface Languages {
     public final String[] ERR_WRITE = {"Write error!", "Errore di scrittura!"};
     public final String[] ERR_IO = {"IO error!", "Errore di IO"};
     public final String[] ERR_TEXT_LEN = {"Text too long (max 4296).", "Testo troppo lungo (max 4296)."};
+    public final String[] ERR_ENCODING = {"Encoding error!", "Errore di Codifica"};
 }

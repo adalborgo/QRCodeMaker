@@ -12,12 +12,21 @@ import java.io.IOException;
 import java.net.*;
 import java.util.Locale;
 
+/**
+ * @package: QRCodeMaker
+ * @file QRCodeGUI.java
+ * @version 1.0 (26-01-2024)
+ * @description: this file contains the GUI to generate QR code from text and files
+ * @author Antonio Dal Borgo <adalborgo@gmail.com>
+ */
 public class QRCodeGUI implements ActionListener, Languages {
 
     // Revision control id
-    public static String cvsId = "$Id: QRCodeGUI.java,v 0.1 10/01/2023 23:59:59 adalborgo $";
+    public static String cvsId = "$Id: QRCodeGUI.java,v 1.0 26/01/2023 23:59:59 adalborgo $";
 
     public static boolean DEBUG = false;
+
+    private final String COPYRIGHT = "www.dibis.it"; // \u00A9
 
     private final int TEXT_FILE_INX = 0;
     private final int ARCH_FILE_INX = 1;
@@ -47,7 +56,7 @@ public class QRCodeGUI implements ActionListener, Languages {
     private JTextArea textArea;
     private JTextField message;
 
-    private JButton clearButton, okButton, exitButton, infoButton;
+    private JButton clearButton, runButton, exitButton, infoButton;
     private JButton dataFileButton, outputPathButton, folderButton;
     private JRadioButton mode1RadioBtn, mode2RadioBtn, mode3RadioBtn; //, mode4RadioBtn;
 
@@ -75,33 +84,6 @@ public class QRCodeGUI implements ActionListener, Languages {
         if (langId.equals("it")) language = 1;
 
         makeGUI();
-    }
-
-    /**
-     * Get absoluteUrl
-     *
-     * @param str
-     * @param addSlash (only for folder)
-     * @return
-     */
-    URL getAbsoluteUrl(String str, boolean addSlash) {
-        URL url;
-        String absolutePath = new File(str).getAbsolutePath();
-        if (addSlash) absolutePath += "/";
-        try {
-            url = new URL("file:/" + absolutePath);
-        } catch (MalformedURLException e) {
-            throw new RuntimeException(e);
-        }
-
-        return url;
-    }
-
-    String getAbsolutePath(String str, boolean addSlash) {
-        String absolutePath = new File(str).getAbsolutePath();
-        if (addSlash) absolutePath += "/";
-
-        return absolutePath;
     }
 
     /**
@@ -133,10 +115,18 @@ public class QRCodeGUI implements ActionListener, Languages {
         frame.add(modePanel());
         frame.add(msgPanel());
         frame.add(buttonPanel());
+        creditsPanel();
         frame.pack();
         frame.setVisible(true);
 
         if (DEBUG) System.out.println(MODE_MSG[0][language]);
+    }
+
+    private void creditsPanel() {
+        JPanel panel = new JPanel();
+        JLabel jbl = customLabel(COPYRIGHT, new Font("Monospaced", Font.BOLD, 18), Color.decode("#003388"));
+        panel.add(jbl);
+        frame.add(panel);
     }
 
     private JPanel dataPanel() {
@@ -328,6 +318,7 @@ public class QRCodeGUI implements ActionListener, Languages {
 
         // Button 'Info'
         infoButton = new JButton(INFO[language]);
+        infoButton.setForeground(Color.decode("#003366"));
         leftPanel.add(infoButton);
         infoButton.addActionListener(this);
 
@@ -346,10 +337,12 @@ public class QRCodeGUI implements ActionListener, Languages {
         rightPanel.add(exitButton);
         exitButton.addActionListener(this);
 
-        // Button 'Ok'
-        okButton = new JButton(OK[language]);
-        rightPanel.add(okButton);
-        okButton.addActionListener(this);
+        // Button 'Run'
+        runButton = new JButton(RUN[language] + " \u25B6");
+        //runButton.setBackground(Color.BLUE);
+        runButton.setForeground(Color.decode("#0000A0"));
+        rightPanel.add(runButton);
+        runButton.addActionListener(this);
 
         return mainPanel;
     }
@@ -411,7 +404,7 @@ public class QRCodeGUI implements ActionListener, Languages {
         // Confirm/Exit
         if (source == clearButton) {
             clearAll();
-        } else if (source == okButton) {
+        } else if (source == runButton) {
             makeQRCode();
         } else if (source == exitButton) {
             if (DEBUG) System.out.println("exitButton");
@@ -473,13 +466,15 @@ public class QRCodeGUI implements ActionListener, Languages {
                 (mode == STRING_INX && textCode.isEmpty());
         boolean noOutput = (mode == STRING_INX || mode == TEXT_FILE_INX) && outputPath.isEmpty() ||
                 (imgSize < 10 || imgSize > 4800);
-        if (noInput || noOutput) return;
+        if (noInput || noOutput) {
+            return;
+        }
 
         if ((mode == ARCH_FILE_INX || mode == TEXT_FILE_INX) && !checkPathname(dataFile)) {
-            setMessage(ERR_FILE1 + dataFile + ERR_FILE2, ERR_COLOR);
+            setMessage(ERR_FILE1[language] + dataFile + ERR_FILE2[language], ERR_COLOR);
             return;
         } else if (mode == ARCH_FILE_INX && !checkPathname(folder)) {
-            setMessage(ERR_FILE1 + folder + ERR_FILE2, ERR_COLOR);
+            setMessage(ERR_FILE1[language] + folder + ERR_FILE2[language], ERR_COLOR);
             return;
         } else if (textCode.length() > 4296) { // ERR_TEXT_LEN
             setMessage(ERR_TEXT_LEN[language], ERR_COLOR);
@@ -504,7 +499,6 @@ public class QRCodeGUI implements ActionListener, Languages {
             cmd = "archfile -s " + dataFile + " -o " + folder +
                     " -t " + imgType + " -d " + imgSize;
             if (!DEBUG) error = qrcode.makeFromFileWithManyStrings(dataFile, folder, header, imgType, imgSize);
-
         }
 
         if (DEBUG) System.out.println("cmd: " + cmd);
@@ -512,11 +506,13 @@ public class QRCodeGUI implements ActionListener, Languages {
         if (error == 0) {
             setMessage(OK[language], OK_COLOR);
         } else if (error == qrcode.ERR_FILE_NOT_FOUND) {
-            setMessage(ERR_FILE1 + dataFile + ERR_FILE2, Color.RED);
+            setMessage(ERR_FILE1[language] + dataFile + ERR_FILE2[language], Color.RED);
         } else if (error == qrcode.ERR_WRITE_FILE) {
             setMessage(ERR_WRITE[language], ERR_COLOR);
         } else if (error == qrcode.ERR_IO) {
             setMessage(ERR_IO[language], ERR_COLOR);
+        } else if (error == qrcode.ERR_ENCODING) {
+            setMessage(ERR_ENCODING[language], ERR_COLOR);
         } else {
             setMessage(" Error!", ERR_COLOR);
         }
@@ -532,6 +528,7 @@ public class QRCodeGUI implements ActionListener, Languages {
     }
 
     //------ UtilGUI ------//
+
     /**
      * @param labelText
      * @param textField
@@ -629,7 +626,7 @@ public class QRCodeGUI implements ActionListener, Languages {
             URL infoUrl = new URL("file:/" + infoPath + "/" + INFO_FILE + langId + ".html");
             URI uri = infoUrl.toURI();
             if (uri != null) {
-                    Desktop.getDesktop().browse(uri);
+                Desktop.getDesktop().browse(uri);
             }
         } catch (IOException | URISyntaxException e) {
             throw new RuntimeException(e);

@@ -1,25 +1,24 @@
 package it.dibis.qrcodemaker;
 
-import java.io.ByteArrayOutputStream;
-import java.io.File;
-import java.io.FileOutputStream;
-import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Paths;
-import java.util.HashMap;
-import java.io.FileNotFoundException;
-import java.util.Scanner;
-
-import com.google.zxing.EncodeHintType;
+import java.io.*;
+import java.util.Hashtable;
+import com.google.zxing.*;
 import com.google.zxing.Writer;
-import com.google.zxing.WriterException;
 import com.google.zxing.client.j2se.MatrixToImageWriter;
-import com.google.zxing.qrcode.QRCodeWriter;
+import com.google.zxing.common.BitMatrix;
 
+/**
+ * @package: QRCodeMaker
+ * @file QRCodeMake.java
+ * @library: ZXing (core-3.5.2.jar; javase-3.5.2.jar)
+ * @version 1.0 (27-01-2024)
+ * @description: this file contains the code to generate QR code from text and files
+ * @author Antonio Dal Borgo <adalborgo@gmail.com>
+ */
 public class QRCodeMake {
 
     // Revision control id
-    public static String cvsId = "$Id: QRCodeMake.java,v 0.1 06/01/2023 23:59:59 adalborgo $";
+    public static String cvsId = "$Id: QRCodeMake.java,v 1.0 27/01/2023 23:59:59 adalborgo $";
 
     public static boolean DEBUG = false;
 
@@ -29,6 +28,7 @@ public class QRCodeMake {
     public final int ERR_WRITE_FILE = 2;
     public final int ERR_IO = 3;
     public final int ERR_TEXT_LEN = 4;
+    public final int ERR_ENCODING = 5;
 
     /**
      * The file contains the text to be converted into qrcode
@@ -41,12 +41,23 @@ public class QRCodeMake {
      */
     public int makeFromFileSingleString(String dataFile, String outputPathname, String imgType, int size) {
         int error = 0;
-        String text = "";
-        try {
-            byte[] bytes = Files.readAllBytes(Paths.get(dataFile));
-            text = new String(bytes);
+
+        // Load the datafile in a text string (binary mode)
+        int[] bts = null;
+        try (FileInputStream fis = new FileInputStream(dataFile)) {
+            bts = new int[fis.available()];
+            for (int i = 0; i < bts.length; i++) {
+                bts[i] = fis.read();
+            }
+
+            // Convert char[] to String
+            char[] chars = new char[bts.length];
+            for (int i = 0; i < bts.length; i++) chars[i] = (char) bts[i];
+            String text = new String(chars);
             if (DEBUG) System.out.println(text);
-            saveQRImage(text, imgType, size, outputPathname + "." + imgType.toLowerCase());
+
+            // Make QRCode
+            saveQRImage(text, imgType, size, checkExt(outputPathname, imgType));
         } catch (FileNotFoundException e) {
             System.out.println("FileNotFound error!");
             e.printStackTrace();
@@ -61,6 +72,7 @@ public class QRCodeMake {
 
     /**
      * Each line of the 'dataFile' file contains the text and file name of the qrcode
+     *
      * @param dataFile
      * @param folder
      * @param header
@@ -70,32 +82,38 @@ public class QRCodeMake {
      */
     public int makeFromFileWithManyStrings(String dataFile, String folder, String header, String imgType, int size) {
         int error = 0;
-        int pnt;;
+        int pnt;
+
         makeFolder(folder); // Check and make if outputPath exist
+
+        // Load every line in binary mode (read lines with accent mark)
         try {
-            File myObj = new File(dataFile);
-            Scanner myReader = new Scanner(myObj);
+            RandomAccessFile file = new RandomAccessFile(dataFile, "r");
             int index = 0;
-            String text;
-            String filename;
-            while (myReader.hasNextLine()) {
-                String line = myReader.nextLine();
+            String text = null;
+            String line = null;
+            String filename = null;
+            while ((line = file.readLine()) != null) {
+                if (DEBUG) System.out.println(line);
                 if (line != null && line.length() > 0) {
                     pnt = line.lastIndexOf(SEPARATOR);
+                    String s = null;
                     if (pnt > 0) {
                         text = header + line.substring(0, pnt).trim();
-                        filename = line.substring(pnt + 1).trim();
-                        if (!DEBUG) saveQRImage(text, imgType, size, folder + "/" + filename + "." + imgType.toLowerCase());
-                    } else if (pnt<0) {
-                        filename = String.valueOf(index).trim();
-                        if (!DEBUG) saveQRImage(line, imgType, size, folder + "/" + filename + "." + imgType.toLowerCase());
+                        s = line.substring(pnt + 1).trim();
+                        filename = checkExt(s, imgType);
+                        if (!DEBUG) saveQRImage(text, imgType, size, folder + "/" + filename);
+                    } else if (pnt < 0) {
+                        text = header + line;
+                        s = String.valueOf(index).trim();
                         ++index;
+                        filename = checkExt(s, imgType);
+                        if (!DEBUG) saveQRImage(text, imgType, size, folder + "/" + filename);
                     }
                 }
             }
-
-            myReader.close();
-        } catch (FileNotFoundException e) {
+            file.close();
+        } catch (IOException e) {
             e.printStackTrace();
             error = ERR_FILE_NOT_FOUND;
         }
@@ -104,7 +122,7 @@ public class QRCodeMake {
     }
 
     /**
-     * Save the image file with the qrcode
+     * Save the qrcode image file from a string
      *
      * @param text
      * @param imgType  = {JPG | GIF | PNG | BMP}
@@ -116,30 +134,22 @@ public class QRCodeMake {
         int error = 0;
         if (text.length() > 4296) return ERR_TEXT_LEN;
 
-        Writer qrWriter = new QRCodeWriter();
-        HashMap<EncodeHintType, Object> hints = new HashMap<>();
-        ByteArrayOutputStream stream = new ByteArrayOutputStream();
+        File file = new File(pathname);
+        BitMatrix matrix = null;
+        Writer writer = new MultiFormatWriter();
         try {
-            FileOutputStream fout = new FileOutputStream(new File(pathname));
-
-            // OutputStream is a byte array of the QR code
-            MatrixToImageWriter.writeToStream(
-                    qrWriter.encode(text, com.google.zxing.BarcodeFormat.QR_CODE, size, size, hints),
-                    imgType, stream);
-
-            // Write image as a file
-            fout.write(stream.toByteArray());
-            fout.flush();
-            fout.close();
-        } catch (WriterException e) {
+            Hashtable<EncodeHintType, String> hints = new Hashtable<EncodeHintType, String>(2);
+            hints.put(EncodeHintType.CHARACTER_SET, "UTF-8");
+            matrix = writer.encode(text, BarcodeFormat.QR_CODE, size, size, hints);
+            MatrixToImageWriter.writeToFile(matrix, imgType, file);
+            if (DEBUG) System.out.println("QRCode Image: " + file.getAbsolutePath());
+        } catch (WriterException | IOException e) {
             e.printStackTrace();
             error = ERR_WRITE_FILE;
-        } catch (IOException e) {
-            e.printStackTrace();
-            error = ERR_IO;
+            return error;
         }
 
-        return error;
+        return 0;
     }
 
     /**
@@ -158,16 +168,18 @@ public class QRCodeMake {
         }
     }
 
-    //--- Only for debug ---//
-    public static void main(String[] args) {
-        String imgType = "PNG";
-        int size = 600;
-        String dataFile = "list.dat";
-        String outputPath = "Commenda-sorted.txt";
-        String folder = "qr-tmp";
-        String header = "https://www.museoscienzefaenza.it/treelib/";
-        //new QRCodeMake().makeFromFileSingleString(dataFile, outputPath, imgType, size);
-        new QRCodeMake().makeFromFileWithManyStrings(dataFile, folder, header, imgType, size);
+    /**
+     * Add the extension if it doesn't exist
+     * @param s
+     * @param imgType
+     * @return
+     */
+    String checkExt(String s, String imgType) {
+        if (s.toLowerCase().endsWith("." + imgType)) {
+            return s;
+        } else {
+            return s + "." + imgType.toLowerCase();
+        }
     }
 
 }
